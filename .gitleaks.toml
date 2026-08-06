@@ -1,0 +1,7 @@
+title = "safe-mcp-bridge-v2 gitleaks configuration"
+
+[allowlist]
+description = "Synthetic credential shapes used only to prove redaction behavior"
+paths = [
+  '''tests/test_redaction\.py''',
+]

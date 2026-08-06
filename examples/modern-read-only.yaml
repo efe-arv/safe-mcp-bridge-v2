@@ -1,0 +1,30 @@
+target:
+  url: https://mcp.example.com/mcp
+  timeout_seconds: 30
+  verify_tls: true
+
+auth:
+  mode: env_bearer
+  env: EXAMPLE_MCP_TOKEN
+  header: Authorization
+  prefix: Bearer
+
+protocol:
+  version: "2026-07-28"
+  legacy_mode: off
+  client_name: safe-mcp-bridge-v2
+  client_version: "0.1.0"
+
+policy:
+  mode: allowlist
+  allow_tools:
+    - memory.search
+    - memory.read
+
+audit:
+  enabled: true
+  path: ./logs/bridge.jsonl
+
+redaction:
+  fail_on_secret_output: true
+
