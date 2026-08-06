@@ -118,13 +118,7 @@ def prepare_request(
 ) -> tuple[dict[str, Any], dict[str, str], ProtocolEra]:
     cloned = _clone(request)
     if cloned.get("method") in {"initialize", "notifications/initialized"}:
-        if config.legacy_mode == "off":
-            raise BridgeError(-32601, "Legacy initialize is disabled for MCP 2026-07-28")
-        return (
-            cloned,
-            {"Accept": "application/json, text/event-stream"},
-            ProtocolEra(False, "legacy"),
-        )
+        raise BridgeError(-32601, "Legacy initialize is not supported by the V2 bridge")
     ensure_modern_metadata(cloned, config)
     return cloned, build_modern_headers(cloned, config), ProtocolEra(True, MODERN_VERSION)
 

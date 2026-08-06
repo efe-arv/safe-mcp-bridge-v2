@@ -32,7 +32,7 @@ OAuth, CIMD, scopes, and protected-resource metadata are essential remote author
 - `application/json` and request-scoped `text/event-stream` responses;
 - transparent MRTR `InputRequiredResult` pass-through;
 - `202 Accepted` notification handling;
-- optional isolated legacy-initialize adapter;
+- explicit rejection of legacy session initialization;
 - fail-closed header/body and protocol-version checks.
 
 See [Compatibility](docs/compatibility.md) for the exact support boundary.
@@ -137,6 +137,7 @@ Read [SECURITY.md](SECURITY.md) and [Threat model](docs/threat-model.md) before 
 - upstream authorization and data minimization remain mandatory;
 - an allowlist cannot make a malicious upstream safe;
 - this bridge does not terminate an OAuth browser flow in `0.1.0`;
+- legacy stateful MCP sessions require a separate compatibility adapter;
 - local process compromise remains outside the bridge's protection boundary.
 
 ## Origin
@@ -146,4 +147,3 @@ This is a clean second-generation implementation of the original private `safe-m
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
-

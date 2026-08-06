@@ -11,7 +11,6 @@ auth:
 
 protocol:
   version: "2026-07-28"
-  legacy_mode: off
   client_name: safe-mcp-bridge-v2
   client_version: "0.1.0"
 
@@ -27,4 +26,3 @@ audit:
 
 redaction:
   fail_on_secret_output: true
-

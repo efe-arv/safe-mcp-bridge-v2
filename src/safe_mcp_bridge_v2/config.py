@@ -71,7 +71,6 @@ class AuditConfig:
 @dataclass(slots=True)
 class ProtocolConfig:
     version: str = MODERN_VERSION
-    legacy_mode: str = "off"
     client_name: str = "safe-mcp-bridge-v2"
     client_version: str = "0.1.0"
     custom_tool_headers: dict[str, dict[str, str]] = field(default_factory=dict)
@@ -118,8 +117,8 @@ def load_config(path: str | Path) -> BridgeConfig:
         protocol=ProtocolConfig(**_mapping(raw.get("protocol"), "protocol")),
         redaction=RedactionConfig(**_mapping(raw.get("redaction"), "redaction")),
     )
-    if config.protocol.version != MODERN_VERSION and config.protocol.legacy_mode == "off":
-        raise ConfigurationError("Non-modern versions require protocol.legacy_mode")
+    if config.protocol.version != MODERN_VERSION:
+        raise ConfigurationError(f"Only MCP {MODERN_VERSION} is supported")
     if config.policy.mode not in {"allowlist", "read_only"}:
         raise ConfigurationError("policy.mode must be allowlist or read_only")
     _validate_security(config)

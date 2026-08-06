@@ -13,7 +13,7 @@
 | MRTR result pass-through | Supported |
 | `202 Accepted` notification response | Supported |
 | `subscriptions/listen` | Allowed; caller controls process lifetime |
-| Legacy `initialize` forwarding | Optional isolated mode |
+| Legacy `initialize` / stateful sessions | Not supported |
 | HTTP+SSE 2024 transport | Not supported |
 | OAuth browser flow / CIMD registration | Not implemented |
 | Automatic `x-mcp-header` schema discovery | Not implemented |
@@ -24,7 +24,6 @@ The first release uses runtime environment credentials for a local stdio process
 
 Custom header mappings are explicit so the operator can audit which tool arguments leave the JSON body as routing headers. A future release may discover validated `x-mcp-header` annotations from `tools/list`, cache them by upstream identity, and refresh on `HeaderMismatch`.
 
-## Legacy mode
+## Legacy deployments
 
-Set `protocol.legacy_mode` to a non-`off` value only for a known legacy upstream. Legacy traffic is forwarded without pretending it conforms to the stateless revision. The modern path remains the default.
-
+This repository intentionally targets the stateless MCP `2026-07-28` era. Stateful `2025-*` sessions have different lifecycle, cancellation, and server-to-client request semantics; forwarding only their `initialize` message would create false compatibility. Use the original bridge for a known legacy deployment or contribute a separately tested compatibility adapter.

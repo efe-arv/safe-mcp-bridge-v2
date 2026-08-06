@@ -9,5 +9,4 @@ All notable changes will be documented here.
 - JSON and request-scoped SSE response handling.
 - Local allowlist and conservative read-only policy modes.
 - Runtime credential injection, redacted JSONL audit, and fail-closed output scanning.
-- Optional isolated legacy-initialize forwarding.
-
+- Explicit fail-closed rejection of legacy session initialization.
