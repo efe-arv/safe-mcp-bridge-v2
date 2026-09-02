@@ -11,6 +11,10 @@ from .protocol import prepare_request
 from .redaction import contains_secret, redact
 from .transport import StreamableHttpTransport
 
+OPENCLAW_COMPAT_PROTOCOLS = frozenset(
+    {"2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"}
+)
+
 
 class Bridge:
     def __init__(self, config: BridgeConfig):
@@ -21,6 +25,45 @@ class Bridge:
 
     def handle(self, request: dict[str, Any]) -> Iterator[dict[str, Any]]:
         request_id = request.get("id")
+        method = request.get("method")
+        if method == "initialize":
+            params = request.get("params")
+            requested_protocol = (
+                params.get("protocolVersion") if isinstance(params, dict) else None
+            )
+            if requested_protocol not in OPENCLAW_COMPAT_PROTOCOLS:
+                yield BridgeError(
+                    -32602,
+                    "Unsupported legacy MCP protocol version",
+                    {"requested": requested_protocol},
+                ).as_jsonrpc(request_id)
+                return
+            self.audit.write(
+                "legacy_initialize_adapted",
+                request_id=request_id,
+                method=method,
+                protocol_version=requested_protocol,
+            )
+            yield {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": {
+                    "protocolVersion": requested_protocol,
+                    "capabilities": {"tools": {"listChanged": False}},
+                    "serverInfo": {
+                        "name": "safe-mcp-bridge-v2",
+                        "version": "0.1.1-legacy-init-adapter",
+                    },
+                },
+            }
+            return
+        if method == "notifications/initialized":
+            self.audit.write(
+                "legacy_initialized_notification_ignored",
+                request_id=request_id,
+                method=method,
+            )
+            return
         decision = self.policy.evaluate(request)
         self.audit.write(
             "policy_decision",
