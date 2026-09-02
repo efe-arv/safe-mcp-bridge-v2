@@ -50,6 +50,8 @@ class PolicyConfig:
     deny_tools: list[str] = field(default_factory=list)
     allow_methods: list[str] = field(
         default_factory=lambda: [
+            "initialize",
+            "notifications/initialized",
             "server/discover",
             "tools/list",
             "tools/call",

@@ -11,9 +11,7 @@ from .protocol import prepare_request
 from .redaction import contains_secret, redact
 from .transport import StreamableHttpTransport
 
-OPENCLAW_COMPAT_PROTOCOLS = frozenset(
-    {"2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"}
-)
+OPENCLAW_COMPAT_PROTOCOL = "2025-11-25"
 
 
 class Bridge:
@@ -25,13 +23,30 @@ class Bridge:
 
     def handle(self, request: dict[str, Any]) -> Iterator[dict[str, Any]]:
         request_id = request.get("id")
+        audit_request_id = redact(request_id)
         method = request.get("method")
+        decision = self.policy.evaluate(request)
+        self.audit.write(
+            "policy_decision",
+            request_id=audit_request_id,
+            method=method,
+            tool=decision.tool,
+            allowed=decision.allowed,
+            reason=decision.reason,
+        )
+        if not decision.allowed:
+            yield BridgeError(
+                -32001,
+                "Request blocked by safe-mcp-bridge-v2 policy",
+                {"reason": decision.reason, "tool": decision.tool},
+            ).as_jsonrpc(request_id)
+            return
         if method == "initialize":
             params = request.get("params")
             requested_protocol = (
                 params.get("protocolVersion") if isinstance(params, dict) else None
             )
-            if requested_protocol not in OPENCLAW_COMPAT_PROTOCOLS:
+            if requested_protocol != OPENCLAW_COMPAT_PROTOCOL:
                 yield BridgeError(
                     -32602,
                     "Unsupported legacy MCP protocol version",
@@ -40,7 +55,7 @@ class Bridge:
                 return
             self.audit.write(
                 "legacy_initialize_adapted",
-                request_id=request_id,
+                request_id=audit_request_id,
                 method=method,
                 protocol_version=requested_protocol,
             )
@@ -58,27 +73,16 @@ class Bridge:
             }
             return
         if method == "notifications/initialized":
+            if request_id is not None:
+                yield BridgeError(
+                    -32600, "notifications/initialized must not include an id"
+                ).as_jsonrpc(request_id)
+                return
             self.audit.write(
                 "legacy_initialized_notification_ignored",
-                request_id=request_id,
+                request_id=None,
                 method=method,
             )
-            return
-        decision = self.policy.evaluate(request)
-        self.audit.write(
-            "policy_decision",
-            request_id=request_id,
-            method=request.get("method"),
-            tool=decision.tool,
-            allowed=decision.allowed,
-            reason=decision.reason,
-        )
-        if not decision.allowed:
-            yield BridgeError(
-                -32001,
-                "Request blocked by safe-mcp-bridge-v2 policy",
-                {"reason": decision.reason, "tool": decision.tool},
-            ).as_jsonrpc(request_id)
             return
         try:
             prepared, protocol_headers, era = prepare_request(request, self.config.protocol)
@@ -88,14 +92,14 @@ class Bridge:
                 headers[self.config.auth.header] = auth_value
             self.audit.write(
                 "upstream_request",
-                request_id=request_id,
+                request_id=audit_request_id,
                 method=prepared.get("method"),
                 protocol_era="modern" if era.modern else "legacy",
                 header_names=sorted(headers),
             )
             for response in self.transport.send(prepared, headers):
                 if contains_secret(response):
-                    self.audit.write("secret_output_detected", request_id=request_id)
+                    self.audit.write("secret_output_detected", request_id=audit_request_id)
                     if self.config.redaction.fail_on_secret_output:
                         yield BridgeError(
                             -32002, "Upstream response contained secret-shaped material"
@@ -105,6 +109,6 @@ class Bridge:
                 yield response
         except BridgeError as exc:
             self.audit.write(
-                "bridge_error", request_id=request_id, code=exc.code, message=exc.message
+                "bridge_error", request_id=audit_request_id, code=exc.code, message=exc.message
             )
             yield exc.as_jsonrpc(request_id)
